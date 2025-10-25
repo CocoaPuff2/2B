@@ -5,6 +5,9 @@
 #include <stdlib.h> // atoi
 #include <math.h>   // pow
 
+// Recieves a task name and # run seconds
+// Calculates dummy pow( ) functions until its CPU time reaches the given number of seconds.
+
 int main( int argc, char* argv[] ) {
   using namespace std;
   

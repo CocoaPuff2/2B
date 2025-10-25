@@ -17,7 +17,7 @@ private:
   int msec = DEFAULT_QUANTUM; // a default time quantum
   int nQuantums = 0;          // # quantums spent so far
   std::queue<int> queue[3];   // a multi-level queue
-  void schedulerSleep( );     // let the scheduler wait for a given quatumn to run the current process
+  void schedulerSleep( );     // let the scheduler wait for a given quantum to run the current process
 };
 
 #endif // SCHEDULER_H

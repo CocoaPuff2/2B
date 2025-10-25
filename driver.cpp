@@ -7,6 +7,7 @@ using namespace std;
 
 int session = 0;
 
+// Spawns a scheduler object
 void *scheduler_thread( void* scheduler ) {
   if ( session == 0 )
     ( (Scheduler *)scheduler )->run_rr( );
@@ -23,6 +24,7 @@ int main( int argc, char* argv[] ) {
     exit( -1 );
   }
 
+  // spawns child processes with tasks
   int nTasks = ( argc - 1 ) / 2;
   char* names[nTasks];
   char* secs[nTasks];
@@ -49,6 +51,7 @@ int main( int argc, char* argv[] ) {
     int pid; // a child process id
     for ( int i = 0; i < nTasks; i++ ) {
       if ( ( pid = fork( ) ) > 0 ) { // parent
+     // passes all their child PIDs into scheduler.addProcess( )
 	scheduler.addProcess( pid );
       }
       else {                         // child
@@ -57,7 +60,7 @@ int main( int argc, char* argv[] ) {
       }
     }
 
-    // run scheduler
+    // run scheduler with an independent thread, and waits for all the child process termination
     pthread_t tid;
     pthread_create( &tid, NULL, scheduler_thread, (void *)&scheduler );
     
