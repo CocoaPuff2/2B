@@ -99,12 +99,6 @@ void Scheduler::run_mfq( ) {
                 current = previous;
                 break;
             }
-
-            if (slices[level] > 0) {
-                // The previous process should run continuously.
-                current = previous;
-                break;
-            }
         }
         // if we reached level 3, (i.e., the lowest level) and found no processes to schedule
         if (level == 3) {
@@ -131,16 +125,22 @@ void Scheduler::run_mfq( ) {
                 // if the next slice was wrapped back to 0. this pid should
                 if (slices[level] >= (1 << level)) { // slices: 1 sec, 2, sec, 4 sec
                     slices[level] = 0;
+                    // go to the next level queue
                     queue[level + 1].push(current);
-
-                    // or go back to the lowest level queue
+                } else {
+                    // continue in same level queue
+                    queue[level].push(current);
                 }
+            } else {
+                //  go back to the lowest level queue
+                queue[2].push(current);
             }
 
+        } else {
+            // current process is dead, print out:
+            cerr << "scheduler: confirmed " << current << "'s termination" << endl;
         }
-
-        // current process is dead, print out:
-        cerr << "scheduler: confirmed " << current << "'s termination" << endl;
+        previous = current;
     }
     cerr << "scheduler: has no more process to run" << endl;
 }
