@@ -81,28 +81,21 @@ void Scheduler::run_mfq( ) {
         slices[i] = 0;                        // all levels start slice 0.
 
     while ( true ) {
-        // quick terminate if all queues empty
-        if ( queue[0].empty() && queue[1].empty() && queue[2].empty() ) {
-            cerr << "scheduler: has no more process to run" << endl;
-            return;
-        }
-
         int level = 0;
-        current = 0;
-
         for ( ; level < 3; level++ ) {
             // if the current level's slice is 0.
             if (slices[level] == 0) {
                 // check the current level queue is empty.
-                if (queue[level].empty()) continue;  // if so, go to a next lower level queue.
+                if (queue[level].empty()) {
+                    // if so, go to a next lower level queue.
+                    continue;
+                }
                 // otherwise, pick up a pid from this queue
                 current = queue[level].front();
                 queue[level].pop();
                 break;
-            }
-            // if the current level's slide is 1, 2, or 3
-            if (slices[level] > 0) {
-                // The previous process should run continuously.
+            } else {
+                // if the current level's slice is 1, 2, or 3, the previous process should run continuously.
                 current = previous;
                 break;
             }
@@ -110,77 +103,47 @@ void Scheduler::run_mfq( ) {
 
         // if we reached level 3, (i.e., the lowest level) and found no processes to schedule
         if (level == 3) {
-            // finish scheduler.cpp
             cerr << "scheduler: has no more process to run" << endl;
             return;
         }
 
-        // At this point we have `current` and its `level`.
-        // We'll use a local per-process counter `used` instead of the global `slices[level]`
-        // so that different processes do not interfere with each other's slice counts.
-        int maxSlices = (1 << level); // 1,2,4
-        if (level == 2) maxSlices = 4; // explicit to be clear
-
-        int used = 0; // how many 1-sec slices this current process has used at this level
-
         // check if a process to run is still active.
         if (kill(current, 0) == 0) {
-            // if so, resumt it, calls schedulerSleep( ) to give a time quantum.
-            kill(current, SIGCONT);
-            schedulerSleep();
-            // then, suspends it.
-            kill(current, SIGSTOP);
-            used++;
+            cerr << "\nscheduler: resumed " << current << " at level " << level << ", slice " << slices[level] + 1 << endl;
+            kill(current, SIGCONT);             // resume it
+            schedulerSleep();                   // give a time quantum
+            kill(current, SIGSTOP);             // suspend it
         }
 
         // check if this process is still active.
         if (kill(current, 0) == 0) {
-            // if so and if the current level is 0 or 1, shift to a next slice
-            if (level < 2) {
-                // After a single 1-sec slice, check if any higher-priority queue got new tasks.
-                // If so, requeue this process (either same level or demote if it exhausted its slices).
-                if (!queue[0].empty() && level > 0) {
-                    // higher priority arrived (queue[0]) — requeue this process appropriately
-                    if (used >= maxSlices) {
-                        // used up all slices at this level -> demote
-                        slices[level] = 0;
-                        queue[level + 1].push(current);
-                    } else {
-                        // still has remaining slices at this level -> put back to same level
-                        queue[level].push(current);
-                    }
-                } else if (!queue[1].empty() && level == 2) {
-                    // If we're at level 2 and queue[1] has arrivals (shouldn't happen here because level<2 handled),
-                    // requeue current accordingly (kept for safety).
-                    queue[level].push(current);
-                } else {
-                    // No higher-priority arrivals — check whether this process used up its max slices.
-                    if (used >= maxSlices) {
-                        // used up all slices at this level, demote
-                        slices[level] = 0;
-                        queue[level + 1].push(current);
-                    } else {
-                        // hasn't used all slices — continue at same level
-                        // We update the per-level counter so that the for-loop logic that checks
-                        // slices[level] > 0 can allow "continuous" execution behavior if desired.
-                        slices[level] = used;
-                        queue[level].push(current);
-                    }
-                }
+            // if so and if the current level is 1 or 2, shift to a next slice
+            slices[level]++;
+
+            // each level gets 3 slices (1–3). if slice reaches 3, wrap to 0.
+            if (slices[level] == 3) {
+                slices[level] = 0; // reset slice count
+                // if the next slice was wrapped back to 0. this pid should
+                // go to the next level queue or
+                // go back to the lowest level queue
+                if (level < 2)
+                    queue[level + 1].push(current);
+                else
+                    queue[2].push(current); // lowest level queue
             } else {
-                //  go back to the lowest level queue
-                queue[2].push(current);
+                // still within slice range, keep same process running next time
+                previous = current;
             }
         } else {
-            // current process is dead, print out:
+            // current process is dead
             cerr << "scheduler: confirmed " << current << "'s termination" << endl;
+            slices[level] = 0; // reset slice for that level
+            previous = 0;
+            current = 0;
         }
-
-        // if the process was demoted or requeued we already updated slices[] appropriately.
-        // Reset previous/current tracking
-        previous = current;
     }
     cerr << "scheduler: has no more process to run" << endl;
 }
+
 
 // IMPLEMENT ABOVE THIS LINE----------------------------------------------------------------------
