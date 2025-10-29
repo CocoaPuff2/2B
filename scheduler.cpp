@@ -73,8 +73,8 @@ void Scheduler::run_rr( ) {
 
 void Scheduler::run_mfq( ) {
     cerr << "scheduler (multilevel feedback queue): started" << endl;
-    int current = 0;  // current pid
-    int previous = 0; // previous pid
+    int current = 0; // pid
+    int previous = 0; // pid
 
     int slices[3];                          // slice[i] means that level i's current time slice.
     for ( int i = 0; i < 3; i++ )
@@ -108,11 +108,12 @@ void Scheduler::run_mfq( ) {
         }
 
         // check if a process to run is still active.
+        // todo: remove the level and slice print comments?
         if (kill(current, 0) == 0) {
             cerr << "\nscheduler: resumed " << current << " at level " << level << ", slice " << slices[level] + 1 << endl;
-            kill(current, SIGCONT);             // resume it
+            kill(current, SIGCONT);             // resume process
             schedulerSleep();                   // give a time quantum
-            kill(current, SIGSTOP);             // suspend it
+            kill(current, SIGSTOP);             // suspend process
         }
 
         // check if this process is still active.
@@ -131,11 +132,11 @@ void Scheduler::run_mfq( ) {
                 else
                     queue[2].push(current); // lowest level queue
             } else {
-                // still within slice range, keep same process running next time
+                // still within the slice range, keep the same process running next time
                 previous = current;
             }
         } else {
-            // current process is dead
+            // current process is dead, print out
             cerr << "scheduler: confirmed " << current << "'s termination" << endl;
             slices[level] = 0; // reset slice for that level
             previous = 0;
